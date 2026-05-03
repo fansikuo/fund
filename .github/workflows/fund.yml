@@ -1,20 +1,50 @@
 name: 每日14点推送白酒基金
 on:
-  workflow_dispatch:  # 允许手动测试运行
+  workflow_dispatch:
   schedule:
-    - cron: '0 6 * * 1-5'  # 北京时间 14:00 运行（UTC 时间 6:00）
+    - cron: '0 6 * * 1-5'
 
 jobs:
   run-fund:
     runs-on: ubuntu-latest
     steps:
-      - name: 拉取代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: 安装依赖
         run: pip install requests
 
-      - name: 生成配置文件
+      - name: 强制覆盖代码，关闭数据库依赖
+        run: |
+          cat > MyUtils.py << EOF
+          import requests
+          import json
+          import datetime
+          import time
+
+          def getTime():
+              return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+          def getFundValue(code):
+              try:
+                  url = f"https://fundgz.1234567.com.cn/js/{code}.js"
+                  r = requests.get(url, timeout=10)
+                  content = r.text
+                  jsonStr = content.replace('jsonpgz(', '').replace(');', '')
+                  data = json.loads(jsonStr)
+                  return data
+              except:
+                  return None
+
+          def sendDingDing(webhook, msg):
+              headers = {"Content-Type": "application/json"}
+              data = {"msgtype": "text", "text": {"content": msg}}
+              try:
+                  requests.post(webhook, headers=headers, json=data)
+              except:
+                  pass
+          EOF
+
+      - name: 生成配置
         run: |
           cat > config.ini << EOF
           [push]
@@ -23,5 +53,5 @@ jobs:
           codes = 161725
           EOF
 
-      - name: 运行基金推送
+      - name: 运行推送
         run: python FundClient.py
