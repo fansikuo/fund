@@ -1,8 +1,8 @@
-name: 每日14点推送白酒基金
+name: 每日14点推送白酒基金(161725)
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # 手动测试
   schedule:
-    - cron: '0 6 * * 1-5'
+    - cron: '0 6 * * 1-5'  # 北京时间14:00
 
 jobs:
   run-fund:
@@ -13,12 +13,12 @@ jobs:
       - name: 安装依赖
         run: pip install requests
 
-      - name: 强制覆盖代码，关闭数据库依赖
+      # 1. 重写干净的工具类
+      - name: 创建工具文件
         run: |
-          cat > MyUtils.py << EOF
+          cat > MyUtils.py << 'EOF'
           import requests
           import json
-          import datetime
           import time
 
           def getTime():
@@ -28,22 +28,45 @@ jobs:
               try:
                   url = f"https://fundgz.1234567.com.cn/js/{code}.js"
                   r = requests.get(url, timeout=10)
-                  content = r.text
-                  jsonStr = content.replace('jsonpgz(', '').replace(');', '')
-                  data = json.loads(jsonStr)
-                  return data
+                  jsonStr = r.text.replace('jsonpgz(', '').replace(');', '')
+                  return json.loads(jsonStr)
               except:
                   return None
 
           def sendDingDing(webhook, msg):
-              headers = {"Content-Type": "application/json"}
-              data = {"msgtype": "text", "text": {"content": msg}}
-              try:
-                  requests.post(webhook, headers=headers, json=data)
-              except:
-                  pass
+              requests.post(webhook, json={
+                  "msgtype": "text",
+                  "text": {"content": msg}
+              })
           EOF
 
+      # 2. 重写主运行文件（彻底删除所有报错代码）
+      - name: 重写主程序
+        run: |
+          cat > FundClient.py << 'EOF'
+          # -*- coding: utf-8 -*-
+          import MyUtils as util
+          import configparser
+
+          # 读取配置
+          config = configparser.ConfigParser()
+          config.read('config.ini', encoding='utf-8')
+          dingding = config.get('push', 'dingding')
+          codes = config.get('fund', 'codes').split(',')
+
+          # 只推送白酒基金
+          for code in codes:
+              data = util.getFundValue(code.strip())
+              if data:
+                  name = data['name']
+                  gsz = data['gsz']
+                  gszzl = data['gszzl']
+                  time = data['gztime']
+                  msg = f"🍶 白酒基金播报({time})\n名称：{name}\n代码：{code}\n当前估值：{gsz}\n涨跌幅：{gszzl}%"
+                  util.sendDingDing(dingding, msg)
+          EOF
+
+      # 3. 配置文件
       - name: 生成配置
         run: |
           cat > config.ini << EOF
@@ -53,5 +76,6 @@ jobs:
           codes = 161725
           EOF
 
-      - name: 运行推送
+      # 4. 运行
+      - name: 执行推送
         run: python FundClient.py
