@@ -1,4 +1,4 @@
-name: 白酒基金 14:00 + 14:30 两次推送
+name: 每日14点、14点30分推送白酒基金(161725)
 on:
   workflow_dispatch:
   schedule:
@@ -22,11 +22,11 @@ jobs:
           import requests
           import os
 
-          # 读取钉钉地址
+          # 读取你的钉钉机器人地址
           webhook = os.getenv("DING_WEBHOOK")
-          print("Webhook读取成功")
+          print("Webhook：", webhook)
 
-          # 天天基金盘中实时估值（14:00 / 14:30 用这个最准）
+          # 获取 招商中证白酒基金 实时估值（161725）
           url = "https://fundgz.1234567.com.cn/js/161725.js"
           res = requests.get(url)
           data = eval(res.text.replace("jsonpgz(", "").replace(");", ""))
@@ -40,11 +40,14 @@ jobs:
 时间：{data['gztime']}"""
 
           # 发送钉钉
-          requests.post(webhook, json={
-              "msgtype": "text",
-              "text": {"content": msg}
-          })
-          print("推送成功！")
+          result = requests.post(
+              webhook,
+              json={
+                  "msgtype": "text",
+                  "text": {"content": msg}
+              }
+          )
+          print("发送结果：", result.text)
           EOF
 
           python run.py
