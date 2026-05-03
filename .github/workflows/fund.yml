@@ -23,12 +23,12 @@ jobs:
           res = requests.get(url)
           data = eval(res.text.strip("jsonpgz();"))
           
-          msg = f"""🍶 白酒基金实时播报
-名称：{data['name']}
+          msg = """🍶 白酒基金实时播报
+名称：{}
 代码：161725
-估值：{data['gsz']}
-涨跌幅：{data['gszzl']}%
-时间：{data['gztime']}"""
+估值：{}
+涨跌幅：{}%
+时间：{}""".format(data['name'], data['gsz'], data['gszzl'], data['gztime'])
 
           requests.post(webhook, json={
               "msgtype": "text",
