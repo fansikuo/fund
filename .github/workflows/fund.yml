@@ -14,25 +14,14 @@ jobs:
         env:
           DING_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK_URL }}
         run: |
-          python3 << 'END'
+          python3 << END
           import requests
           import os
-
           webhook = os.environ.get("DING_WEBHOOK")
           url = "https://fundgz.1234567.com.cn/js/161725.js"
           res = requests.get(url)
           data = eval(res.text.strip("jsonpgz();"))
-          
-          msg = """🍶 白酒基金实时播报
-名称：{}
-代码：161725
-估值：{}
-涨跌幅：{}%
-时间：{}""".format(data['name'], data['gsz'], data['gszzl'], data['gztime'])
-
-          requests.post(webhook, json={
-              "msgtype": "text",
-              "text": {"content": msg}
-          })
+          msg = "🍶 白酒基金实时播报\n名称：{}\n代码：161725\n估值：{}\n涨跌幅：{}%\n时间：{}".format(data['name'], data['gsz'], data['gszzl'], data['gztime'])
+          requests.post(webhook, json={"msgtype":"text","text":{"content":msg}})
           print("推送成功")
           END
