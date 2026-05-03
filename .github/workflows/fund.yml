@@ -1,4 +1,4 @@
-name: 每日14点、14点30分推送白酒基金(161725)
+name: 白酒基金定时推送
 on:
   workflow_dispatch:
   schedule:
@@ -6,48 +6,33 @@ on:
     - cron: '30 6 * * 1-5'
 
 jobs:
-  run-fund:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: 安装依赖
-        run: pip install requests
-
-      - name: 运行推送
+      - name: Run script
         env:
           DING_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK_URL }}
         run: |
-          cat > run.py << 'EOF'
+          python3 << 'END'
           import requests
           import os
 
-          # 读取你的钉钉机器人地址
-          webhook = os.getenv("DING_WEBHOOK")
-          print("Webhook：", webhook)
-
-          # 获取 招商中证白酒基金 实时估值（161725）
+          webhook = os.environ.get("DING_WEBHOOK")
           url = "https://fundgz.1234567.com.cn/js/161725.js"
           res = requests.get(url)
-          data = eval(res.text.replace("jsonpgz(", "").replace(");", ""))
-
-          # 推送内容
+          data = eval(res.text.strip("jsonpgz();"))
+          
           msg = f"""🍶 白酒基金实时播报
 名称：{data['name']}
 代码：161725
-当前估值：{data['gsz']}
+估值：{data['gsz']}
 涨跌幅：{data['gszzl']}%
 时间：{data['gztime']}"""
 
-          # 发送钉钉
-          result = requests.post(
-              webhook,
-              json={
-                  "msgtype": "text",
-                  "text": {"content": msg}
-              }
-          )
-          print("发送结果：", result.text)
-          EOF
-
-          python run.py
+          requests.post(webhook, json={
+              "msgtype": "text",
+              "text": {"content": msg}
+          })
+          print("推送成功")
+          END
