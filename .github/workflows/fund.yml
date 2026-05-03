@@ -1,27 +1,49 @@
-name: 每日14点推送白酒基金
+name: 每日14点、14点30分推送白酒基金(161725)
 on:
-  workflow_dispatch:  # 允许手动测试运行
+  workflow_dispatch:
   schedule:
-    - cron: '0 6 * * 1-5'  # 北京时间 14:00 运行（UTC 时间 6:00）
+    - cron: '0 6 * * 1-5'
+    - cron: '30 6 * * 1-5'
 
 jobs:
   run-fund:
     runs-on: ubuntu-latest
     steps:
-      - name: 拉取代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 安装依赖
+      - name: Install requests
         run: pip install requests
 
-      - name: 生成配置文件
+      - name: Run fund push
+        env:
+          DING_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK_URL }}
         run: |
-          cat > config.ini << EOF
-          [push]
-          dingding = "${{ secrets.DINGDING_WEBHOOK }}"
-          [fund]
-          codes = 161725
+          cat > run.py << 'EOF'
+          import requests
+          import os
+
+          webhook = os.getenv("DING_WEBHOOK")
+          print("Webhook:", webhook)
+
+          url = "https://fundgz.1234567.com.cn/js/161725.js"
+          res = requests.get(url)
+          data = eval(res.text.replace("jsonpgz(", "").replace(");", ""))
+
+          msg = f"""🍶 白酒基金实时播报
+名称：{data['name']}
+代码：161725
+当前估值：{data['gsz']}
+涨跌幅：{data['gszzl']}%
+时间：{data['gztime']}"""
+
+          result = requests.post(
+              webhook,
+              json={
+                  "msgtype": "text",
+                  "text": {"content": msg}
+              }
+          )
+          print("发送结果：", result.text)
           EOF
 
-      - name: 运行基金推送
-        run: python FundClient.py
+          python run.py
