@@ -2,8 +2,8 @@ name: 每日14点、14点30分推送白酒基金(161725)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * 1-5'   # 北京时间 14:00
-    - cron: '30 6 * * 1-5'  # 北京时间 14:30
+    - cron: '0 6 * * 1-5'
+    - cron: '30 6 * * 1-5'
 
 jobs:
   run-fund:
