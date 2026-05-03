@@ -13,52 +13,32 @@ jobs:
       - name: 安装依赖
         run: pip install requests
 
-      - name: 创建工具文件
+      - name: 运行基金推送
+        env:
+          DING_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK_URL }}
         run: |
-          cat > MyUtils.py << 'EOF'
+          cat > run.py << 'EOF'
           import requests
-          import time
-
-          def getFundValue(code):
-              try:
-                  url = f"https://fundgz.1234567.com.cn/js/{code}.js"
-                  r = requests.get(url, timeout=10)
-                  jsonStr = r.text.replace('jsonpgz(', '').replace(');', '')
-                  return eval(jsonStr)
-              except Exception as e:
-                  print("获取基金失败:", e)
-                  return None
-
-          def sendDingDing(webhook, msg):
-              try:
-                  headers = {"Content-Type": "application/json"}
-                  data = {
-                      "msgtype": "text",
-                      "text": {"content": msg}
-                  }
-                  response = requests.post(webhook, headers=headers, json=data)
-                  print("钉钉返回结果:", response.text)
-                  return response.json()
-              except Exception as e:
-                  print("发送异常:", e)
-          EOF
-
-      - name: 主程序
-        run: |
-          cat > FundClient.py << 'EOF'
-          import MyUtils as util
           import os
 
-          webhook = os.environ.get("DING_WEBHOOK")
-          print("当前Webhook:", webhook)
+          # 读取密钥
+          webhook = os.getenv("DING_WEBHOOK")
+          print("Webhook读取成功：", webhook)
 
-          data = util.getFundValue("161725")
-          if data:
-              msg = f"🍶白酒基金播报\n名称:{data['name']}\n估值:{data['gsz']}\n涨幅:{data['gszzl']}%\n时间:{data['gztime']}"
-              util.sendDingDing(webhook, msg)
+          # 获取白酒基金数据
+          res = requests.get("https://fundgz.1234567.com.cn/js/161725.js")
+          data = eval(res.text.replace("jsonpgz(", "").replace(");", ""))
+
+          # 推送消息
+          msg = "🍶白酒基金播报\n名称:%s\n估值:%s\n涨幅:%s%%\n时间:%s" % (
+              data['name'], data['gsz'], data['gszzl'], data['gztime']
+          )
+          
+          resp = requests.post(
+              webhook,
+              json={"msgtype": "text", "text": {"content": msg}}
+          )
+          print("推送结果：", resp.text)
           EOF
 
-      - name: 运行
-        env:
-          DING_WEBHOOK: ${{ secrets.DINGDING_WEBHOOK }}
-        run: python FundClient.py
+          python run.py
