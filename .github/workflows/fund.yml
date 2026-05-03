@@ -1,8 +1,9 @@
-name: 每日14点推送白酒基金(161725)
+name: 白酒基金 14:00 + 14:30 两次推送
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * 1-5'
+    - cron: '0 6 * * 1-5'   # 北京时间 14:00
+    - cron: '30 6 * * 1-5'  # 北京时间 14:30
 
 jobs:
   run-fund:
@@ -13,7 +14,7 @@ jobs:
       - name: 安装依赖
         run: pip install requests
 
-      - name: 运行基金推送
+      - name: 运行推送
         env:
           DING_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK_URL }}
         run: |
@@ -21,24 +22,29 @@ jobs:
           import requests
           import os
 
-          # 读取密钥
+          # 读取钉钉地址
           webhook = os.getenv("DING_WEBHOOK")
-          print("Webhook读取成功：", webhook)
+          print("Webhook读取成功")
 
-          # 获取白酒基金数据
-          res = requests.get("https://fundgz.1234567.com.cn/js/161725.js")
+          # 天天基金盘中实时估值（14:00 / 14:30 用这个最准）
+          url = "https://fundgz.1234567.com.cn/js/161725.js"
+          res = requests.get(url)
           data = eval(res.text.replace("jsonpgz(", "").replace(");", ""))
 
-          # 推送消息
-          msg = "🍶白酒基金播报\n名称:%s\n估值:%s\n涨幅:%s%%\n时间:%s" % (
-              data['name'], data['gsz'], data['gszzl'], data['gztime']
-          )
-          
-          resp = requests.post(
-              webhook,
-              json={"msgtype": "text", "text": {"content": msg}}
-          )
-          print("推送结果：", resp.text)
+          # 推送内容
+          msg = f"""🍶 白酒基金实时播报
+名称：{data['name']}
+代码：161725
+当前估值：{data['gsz']}
+涨跌幅：{data['gszzl']}%
+时间：{data['gztime']}"""
+
+          # 发送钉钉
+          requests.post(webhook, json={
+              "msgtype": "text",
+              "text": {"content": msg}
+          })
+          print("推送成功！")
           EOF
 
           python run.py
