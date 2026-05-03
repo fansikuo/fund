@@ -1,4 +1,4 @@
-name: 白酒基金定时推送
+name: 基金定时推送
 on:
   workflow_dispatch:
   schedule:
@@ -18,10 +18,32 @@ jobs:
           import requests
           import os
           webhook = os.environ.get("DING_WEBHOOK")
-          url = "https://fundgz.1234567.com.cn/js/161725.js"
-          res = requests.get(url)
-          data = eval(res.text.strip("jsonpgz();"))
-          msg = "🍶 白酒基金实时播报\n名称：{}\n代码：161725\n估值：{}\n涨跌幅：{}%\n时间：{}".format(data['name'], data['gsz'], data['gszzl'], data['gztime'])
+
+          # 要推送的基金代码
+          funds = [
+              "161725",   # 招商中证白酒
+              "012734",   # 易方达中证人工智能ETF联接C
+              "512450",   # 畜牧养殖ETF广发
+              "018345",   # 华夏中证机器人ETF发起式联接C
+              "001940"    # 农银现代农业加
+          ]
+
+          msg = "📢 基金实时播报（14:00/14:30）\\n"
+
+          for code in funds:
+              try:
+                  url = f"https://fundgz.1234567.com.cn/js/{code}.js"
+                  res = requests.get(url)
+                  data = eval(res.text.strip("jsonpgz();"))
+                  name = data['name']
+                  gsz = data['gsz']
+                  gszzl = data['gszzl']
+                  time = data['gztime']
+                  msg += f"\\n【{code}】{name}\\n估值：{gsz} | 涨跌：{gszzl}%\\n"
+              except:
+                  pass
+
+          # 发送钉钉
           requests.post(webhook, json={"msgtype":"text","text":{"content":msg}})
           print("推送成功")
           END
